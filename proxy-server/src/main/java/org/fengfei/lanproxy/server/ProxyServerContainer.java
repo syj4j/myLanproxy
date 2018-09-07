@@ -198,9 +198,8 @@ public class ProxyServerContainer implements Container, ConfigChangedListener {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
 						ch.pipeline().addFirst(new BytesMetricsHandler());
-
-						ch.pipeline().addLast(new CompressHandler());
-						ch.pipeline().addLast(new DecompressHandler());
+//						ch.pipeline().addLast(new CompressHandler());
+//						ch.pipeline().addLast(new DecompressHandler());
 						ch.pipeline().addLast(new UserChannelHandler());
 					}
 				});

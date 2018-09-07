@@ -81,8 +81,8 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
 
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
-            	ch.pipeline().addLast(new CompressHandler());
-            	ch.pipeline().addLast(new DecompressHandler());
+//            	ch.pipeline().addLast(new CompressHandler());
+//            	ch.pipeline().addLast(new DecompressHandler());
                 ch.pipeline().addLast(new RealServerChannelHandler());
             }
         });
@@ -140,7 +140,7 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
 						pipeline.addLast(new ProxyMessageDecoder(MAX_FRAME_LENGTH, LENGTH_FIELD_OFFSET,
 								LENGTH_FIELD_LENGTH, LENGTH_ADJUSTMENT, INITIAL_BYTES_TO_STRIP));
 						pipeline.addLast(new ProxyMessageEncoder());
-						pipeline.addLast(new WebSocketServerChannelHandler(realServerBootstrap, bootstrap));
+						pipeline.addLast(new WebSocketServerChannelHandler(realServerBootstrap, bootstrap,ProxyClientContainer.this));
 					}
 				})// bootstrap 还可以设置TCP参数，根据需要可以分别设置主线程池和从线程池参数，来优化服务端性能。
 					// 其中主线程池使用option方法来设置，从线程池使用childOption方法设置。
@@ -213,9 +213,13 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-    	System.out.println("disconnected ! Retry...");
-        reconnectWait();
-        connectProxyServer();
+    	if(Config.getInstance().getBooleanValue("use.websocket",false)){
+    		System.out.println("disconnected ! Retry...");
+    	}else{
+    		System.out.println("disconnected ! Retry...");
+    		reconnectWait();
+    		connectProxyServer();
+    	}
     }
 
     private void reconnectWait() {

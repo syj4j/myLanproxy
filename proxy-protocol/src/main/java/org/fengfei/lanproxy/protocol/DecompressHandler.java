@@ -31,17 +31,10 @@ public class DecompressHandler extends ChannelOutboundHandlerAdapter{
 			ByteBuf newbuf = Unpooled.wrappedBuffer(uncompress);
 			ctx.write(newbuf);
 		}else{
-//			logger.debug("不解压:"+buf.readableBytes());
+			logger.debug("不解压:"+buf.readableBytes());
 //			super.write(ctx, msg, promise);
 			ctx.write(buf);
 		}
-	}
-
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-//		cause.printStackTrace();
-		logger.error(cause.getStackTrace().toString());
-		super.exceptionCaught(ctx, cause);
 	}
 
 	public byte[] deflateUncompress(byte[] input) throws DataFormatException {

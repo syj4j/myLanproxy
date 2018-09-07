@@ -33,17 +33,10 @@ public class CompressHandler extends ChannelInboundHandlerAdapter {
 			ByteBuf newbuf = Unpooled.wrappedBuffer(compress);
 			ctx.fireChannelRead(newbuf);
 		} else {
-//			logger.debug("不压缩:" + buf.readableBytes());
+			logger.debug("不压缩:" + buf.readableBytes());
 			// super.channelRead(ctx, msg);
 			ctx.fireChannelRead(buf);
 		}
-	}
-
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		// cause.printStackTrace();
-		logger.error(cause.getMessage());
-		super.exceptionCaught(ctx, cause);
 	}
 
 	public byte[] deflateCompress(byte input[]) {

@@ -55,6 +55,7 @@ public class ServerChannelHandler extends SimpleChannelInboundHandler<ProxyMessa
         if (userChannel != null) {
             ByteBuf buf = ctx.alloc().buffer(proxyMessage.getData().length);
             buf.writeBytes(proxyMessage.getData());
+            logger.debug("write data to user server, {}", userChannel);
             userChannel.writeAndFlush(buf);
         }
     }

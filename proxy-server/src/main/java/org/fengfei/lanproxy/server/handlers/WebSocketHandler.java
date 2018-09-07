@@ -27,6 +27,7 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.ContinuationWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -60,12 +61,12 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
 		public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
 			ctx.flush();
 		}
-
-		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-			cause.printStackTrace();
-			ctx.close();
-		}
+		
+//		@Override
+//		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+//			cause.printStackTrace();
+//			ctx.close();
+//		}
 
 		@Override
 		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
@@ -139,44 +140,34 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
 
 		private void handleWebSocketRequest(ChannelHandlerContext ctx, WebSocketFrame req) {
 			if (req instanceof CloseWebSocketFrame) {
+				logger.debug("CloseWebSocketFrame");
 				// 关闭websocket连接
 				handshaker.close(ctx.channel(), (CloseWebSocketFrame) req.retain());
 				return;
 			}
 			if (req instanceof PingWebSocketFrame) {
-				ctx.writeAndFlush(new PongWebSocketFrame(req.content().retain()));
+				logger.debug("PingWebSocketFrame");
+				ctx.write(new PongWebSocketFrame(req.content().retain()));
+				return;
+			}
+			if (req instanceof PongWebSocketFrame) {
+				logger.debug("PongWebSocketFrame");
 				return;
 			}
 			if (req instanceof TextWebSocketFrame) {
-//				if(((TextWebSocketFrame) req).text().startsWith("clientKey:")){
-//					String[] ss = ((TextWebSocketFrame) req).text().split(":");
-//					String clientKey=ss[1];
-//					List<Integer> ports = ProxyConfig.getInstance().getClientInetPorts(clientKey);
-//			        if (ports == null) {
-//			            logger.info("error clientKey {}, {}", clientKey, ctx.channel());
-//			            ctx.channel().close();
-//			            return;
-//			        }
-//
-//			        Channel channel = ProxyChannelManager.getCmdChannel(clientKey);
-//			        if (channel != null) {
-//			            logger.warn("exist channel for key {}, {}", clientKey, channel);
-//			            ctx.channel().close();
-//			            return;
-//			        }
-//
-//			        logger.info("set port => channel, {}, {}, {}", clientKey, ports, ctx.channel());
-//			        ProxyChannelManager.addCmdChannel(ports, clientKey, ctx.channel());
-//				}else{
-//					sendWebSocketResponse(ctx.channel(), "fromServer:" + ((TextWebSocketFrame) req).text());
-//				}
 				sendWebSocketResponse(ctx, "fromServer:" + ((TextWebSocketFrame) req).text());
 				return;
 			}
-			if (req instanceof BinaryWebSocketFrame) {
-				ByteBuf buf = req.content();
-				ctx.fireChannelRead(buf);
+			if (!(req instanceof BinaryWebSocketFrame || req instanceof ContinuationWebSocketFrame)) {
+				throw new UnsupportedOperationException("不支持的消息类型:"+req.getClass());
 			}
+			if(req instanceof BinaryWebSocketFrame){
+				logger.debug("BinaryWebSocketFrame");
+			}else{
+				logger.debug("ContinuationWebSocketFrame");
+			}
+			ByteBuf buf = req.content();
+			ctx.fireChannelRead(buf);
 		}
 
 		private void sendHttpResponse(ChannelHandlerContext ctx, FullHttpRequest req, FullHttpResponse res) {
@@ -197,7 +188,7 @@ public class WebSocketHandler extends ChannelInboundHandlerAdapter {
 		}
 
 		private void sendWebSocketResponse(ChannelHandlerContext ctx, String response) {
-			ctx.writeAndFlush(new TextWebSocketFrame(response));
+			ctx.write(new TextWebSocketFrame(response));
 		}
 
 		private void broadcastWebSocketResponse(String response) {

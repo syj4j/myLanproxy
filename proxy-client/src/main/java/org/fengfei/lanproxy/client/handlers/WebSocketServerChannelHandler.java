@@ -1,7 +1,5 @@
 package org.fengfei.lanproxy.client.handlers;
 
-import java.util.List;
-
 import org.fengfei.lanproxy.client.ClientChannelMannager;
 import org.fengfei.lanproxy.client.listener.ChannelStatusListener;
 import org.fengfei.lanproxy.client.listener.ProxyChannelBorrowListener;
@@ -22,30 +20,24 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.SimpleChannelInboundHandler;
 
-/**
- *
- * @author fengfei
- *
- */
-public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<ProxyMessage> {
-
+public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<ProxyMessage>{
 	private static Logger logger = LoggerFactory.getLogger(WebSocketServerChannelHandler.class);
 
 	private Bootstrap bootstrap;
 
 	private ServerBootstrap proxyBootstrap;
 
-	// private ChannelStatusListener channelStatusListener;
+	private ChannelStatusListener channelStatusListener;
 
-	public WebSocketServerChannelHandler(Bootstrap bootstrap, ServerBootstrap proxyBootstrap) {
+	public WebSocketServerChannelHandler(Bootstrap bootstrap, ServerBootstrap proxyBootstrap,ChannelStatusListener channelStatusListener) {
 		this.bootstrap = bootstrap;
 		this.proxyBootstrap = proxyBootstrap;
-		// this.channelStatusListener = channelStatusListener;
+		this.channelStatusListener = channelStatusListener;
 	}
-
+	
 	@Override
 	protected void channelRead0(ChannelHandlerContext ctx, ProxyMessage proxyMessage) throws Exception {
-		logger.debug("ProxyMessage received {}", proxyMessage.getType());
+		logger.debug("recieved proxy message, type is {}", proxyMessage.getType());
 		switch (proxyMessage.getType()) {
 		case ProxyMessage.TYPE_CONNECT:
 			handleConnectMessage(ctx, proxyMessage);
@@ -60,13 +52,13 @@ public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<P
 			break;
 		}
 	}
-
+	
 	private void handleTransferMessage(ChannelHandlerContext ctx, ProxyMessage proxyMessage) {
 		Channel realServerChannel = ctx.channel().attr(Constants.NEXT_CHANNEL).get();
 		if (realServerChannel != null) {
 			ByteBuf buf = ctx.alloc().buffer(proxyMessage.getData().length);
 			buf.writeBytes(proxyMessage.getData());
-			logger.debug("write data to real server, {}", realServerChannel);
+			logger.debug("write data to real server: {}.", realServerChannel);
 			realServerChannel.writeAndFlush(buf);
 		}
 	}
@@ -126,7 +118,6 @@ public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<P
 
 						@Override
 						public void error(Throwable cause) {
-							logger.debug(cause.getMessage());
 							ProxyMessage proxyMessage = new ProxyMessage();
 							proxyMessage.setType(ProxyMessage.TYPE_DISCONNECT);
 							proxyMessage.setUri(userId);
@@ -156,9 +147,11 @@ public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<P
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+		ClientChannelMannager.setCmdChannel(ctx.channel());
+		ClientChannelMannager.returnProxyChanel(ctx.channel());
 		super.channelActive(ctx);
 	}
-
+	
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 
@@ -166,7 +159,7 @@ public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<P
 		if (ClientChannelMannager.getCmdChannel() == ctx.channel()) {
 			ClientChannelMannager.setCmdChannel(null);
 			ClientChannelMannager.clearRealServerChannels();
-			// channelStatusListener.channelInactive(ctx);
+			channelStatusListener.channelInactive(ctx);
 		} else {
 			// 数据传输连接
 			Channel realServerChannel = ctx.channel().attr(Constants.NEXT_CHANNEL).get();
@@ -184,5 +177,4 @@ public class WebSocketServerChannelHandler extends SimpleChannelInboundHandler<P
 		logger.error("exception caught", cause);
 		super.exceptionCaught(ctx, cause);
 	}
-
 }
